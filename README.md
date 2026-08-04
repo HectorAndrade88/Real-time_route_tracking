@@ -53,20 +53,20 @@ npx --yes serve .
 
 Todo se controla desde `routeConfiguration` y `localization`, al inicio del `<script>`.
 
-| Campo | Uso |
-| --- | --- |
-| `origin`, `destination` | Puntos fijos de la ruta, `[lat, lng]`. |
-| `routeOptions[]` | Opciones de ruta: `id`, `viaPoints`, `isRecommended`, `precomputedPath`. |
-| `routeOptions[].precomputedPath` | Polilínea precalculada. Si está presente (≥ 2 puntos), esa opción no llama a OSRM. |
-| `corridorMeters` | Ancho del corredor para el estado "en ruta". |
-| `accuracyThresholdMeters` | Lecturas de GPS con `accuracy` peor que esto se descartan. |
-| `movingAverageWindow` | Tamaño de la media móvil sobre las últimas N posiciones. |
-| `regulations[]` | Reglamentos. Con `polygon` son geovallas; `enforcement` es `prohibited`, `regulated` o `route`. |
-| `recommendations[]` | Recomendaciones operativas (código + icono). |
-| `operator.logoImageDataUri` | Logotipo del operador como data URI. Si es `null` se usa un glifo genérico. |
-| `simulationSpeedKmh`, `simulationStepMeters`, `simulationEmitIntervalMs` | Modo simulación. |
-| `vehicleFocusZoom`, `markerAnimationDurationMs` | Encuadre y deslizamiento del marcador. |
-| `localization.dictionaries` | Textos por idioma, indexados por código de reglamento, recomendación y opción de ruta. |
+| Campo                                                                    | Uso                                                                                             |
+| ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `origin`, `destination`                                                  | Puntos fijos de la ruta, `[lat, lng]`.                                                          |
+| `routeOptions[]`                                                         | Opciones de ruta: `id`, `viaPoints`, `isRecommended`, `precomputedPath`.                        |
+| `routeOptions[].precomputedPath`                                         | Polilínea precalculada. Si está presente (≥ 2 puntos), esa opción no llama a OSRM.              |
+| `corridorMeters`                                                         | Ancho del corredor para el estado "en ruta".                                                    |
+| `accuracyThresholdMeters`                                                | Lecturas de GPS con `accuracy` peor que esto se descartan.                                      |
+| `movingAverageWindow`                                                    | Tamaño de la media móvil sobre las últimas N posiciones.                                        |
+| `regulations[]`                                                          | Reglamentos. Con `polygon` son geovallas; `enforcement` es `prohibited`, `regulated` o `route`. |
+| `recommendations[]`                                                      | Recomendaciones operativas (código + icono).                                                    |
+| `operator.logoImageDataUri`                                              | Logotipo del operador como data URI. Si es `null` se usa un glifo genérico.                     |
+| `simulationSpeedKmh`, `simulationStepMeters`, `simulationEmitIntervalMs` | Modo simulación.                                                                                |
+| `vehicleFocusZoom`, `markerAnimationDurationMs`                          | Encuadre y deslizamiento del marcador.                                                          |
+| `localization.dictionaries`                                              | Textos por idioma, indexados por código de reglamento, recomendación y opción de ruta.          |
 
 El origen de la geometría es intercambiable sin tocar el resto del código: `RoutePlanner`
 devuelve `{ coordinates, source, distanceMeters, durationSeconds }` y `source` puede ser
@@ -74,11 +74,11 @@ devuelve `{ coordinates, source, distanceMeters, durationSeconds }` y `source` p
 
 ## Estados
 
-| Estado | Condición | Color |
-| --- | --- | --- |
-| En ruta | distancia a la polilínea activa ≤ `corridorMeters` | `#00843D` |
-| Fuera del corredor | distancia > `corridorMeters` | `#B36A00` |
-| Zona restringida | el punto cae dentro de una zona `prohibited` | `#B3261E` |
+| Estado             | Condición                                          | Color     |
+| ------------------ | -------------------------------------------------- | --------- |
+| En ruta            | distancia a la polilínea activa ≤ `corridorMeters` | `#00843D` |
+| Fuera del corredor | distancia > `corridorMeters`                       | `#B36A00` |
+| Zona restringida   | el punto cae dentro de una zona `prohibited`       | `#B3261E` |
 
 La distancia punto-a-polilínea (proyección local a metros + punto-a-segmento) y el
 punto-en-polígono (ray casting) están implementados a mano en `GeoMath`, sin librería
@@ -109,3 +109,34 @@ derechos correspondientes), colócalo en `routeConfiguration.operator.logoImageD
    transporte público, entrega de alquiler), pero deben sustituirse por la cartografía
    oficial de AENA antes de cualquier uso operativo. Los textos de los reglamentos son
    contenido de demostración, no una publicación oficial.
+
+## Responsive — cambios y cómo probar
+
+Se añadieron reglas CSS responsivas para mejorar la visualización en dispositivos móviles
+y tablets. A continuación un resumen práctico para desarrolladores y QA.
+
+- **Breakpoints aplicados**:
+  - Extra grande: `>= 1400px` — layout de dos columnas, `briefing` visible sin scroll.
+  - Grande: `1200–1399px` — `briefing` ancho ~380px.
+  - Mediano: `980–1199px` — layout con `briefing` a la derecha (330px).
+  - Tablet: `768–979px` — mapa arriba (≈50vh), `briefing` abajo y scrollable.
+  - Móvil landscape: `560–767px` — carrusel horizontal para `option-list` (tarjetas ~75%).
+  - Móvil portrait: `<560px` — carrusel horizontal con tarjetas ~90% y `scroll-snap`.
+
+- **Variables importantes**:
+  - `--appbar-height`: altura reservada para la cabecera (por defecto 62px).
+  - `--console-height`: altura reservada para la barra inferior / consola (por defecto 84px).
+    Ajusta estas variables en la raíz (`:root`) si tu cabecera o pie cambian de tamaño.
+
+- **Cómo probar localmente**:
+  1. Servir el proyecto y abrir `index.html` en el navegador (usar `localhost` para geolocalización real).
+  2. DevTools → Responsive: probar cada breakpoint, comprobar que:
+     - la ficha (`briefing`) se puede desplazar internamente y no queda oculta por la barra inferior;
+     - los títulos de sección permanecen visibles (sticky) dentro de la ficha;
+     - las tarjetas de `option-list` se deslizan y encajan gracias a `scroll-snap`.
+  3. Probar en dispositivos reales (iOS Safari y Chrome Android) para verificar safe-area y barras del sistema.
+
+- **Alternativas**:
+  - Si prefieres un único scroll vertical en móviles en lugar de carrusel, se puede añadir un toggle CSS/JS que cambie `.option-list` a columna vertical en `<560px`.
+
+Si quieres, actualizo `--console-height` al valor que me indiques o implemento el toggle carrusel/lista vertical.
