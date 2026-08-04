@@ -232,23 +232,15 @@
       gap: 8px;
       flex: 0 1 auto;
       min-width: 0;
-    }
-
-    .option {
-      min-width: 90%;
-      flex: 0 0 auto;
-      white-space: normal;
-    }
-
-    padding: 8px 14px 8px 11px;
-    border: 1px solid var(--line-strong);
-    border-radius: 999px;
-    background: var(--surface-alt);
-    font-family: var(--font-data);
-    font-size: 11px;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-    color: var(--ink-dim);
+      padding: 8px 14px 8px 11px;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      background: var(--surface-alt);
+      font-family: var(--font-data);
+      font-size: 11px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--ink-dim);
     }
 
     .status-pill__dot {
@@ -292,6 +284,10 @@
     .map-stage {
       position: relative;
       min-height: 0;
+      /* z-index explícito => contexto de apilamiento propio: los paneles y
+         controles de Leaflet (z-index hasta 1000) quedan confinados al mapa y
+         no pueden pasar por encima de la cabecera ni de la consola fijas. */
+      z-index: 0;
     }
 
     #map {
@@ -702,17 +698,39 @@
     /* Mobile-first carousel vs stack styles, accesibilidad y helpers */
     .sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 
-    .option-list{display:flex;gap:12px;overflow-x:auto;padding:8px 6px 14px;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory;scroll-padding-inline:12px;margin:0;list-style:none}
+    /* Carrusel horizontal. Dos correcciones respecto a la versión anterior:
+       1. `flex-direction: row` explícito — la regla `.option-list` de más arriba
+          declara `column`, y sin resetearlo el carrusel se renderizaba vertical.
+       2. El ancho de tarjeta se fija en el `<li>`, no en `.option`. El marcado
+          generado es `<li><button class="option">…</button></li>`, así que el
+          flex item es el `li`; aplicar `min-width` al botón no cambiaba el
+          tamaño del item y las tarjetas se encogían a su contenido. */
+    .option-list{display:flex;flex-direction:row;gap:12px;overflow-x:auto;overflow-y:hidden;padding:8px 6px 14px;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory;scroll-padding-inline:12px;margin:0;list-style:none}
 
-    .option{min-width:90%;flex:0 0 auto;white-space:normal;scroll-snap-align:start;border-radius:9px;border:1px solid var(--line);padding:12px;background:var(--surface)}
+    /* `flex-basis: 86%` en lugar de `min-width: 86%`: min-width es solo un piso
+       y el item seguía creciendo hasta su max-content (~465px), desbordando la
+       tarjeta. Con flex-basis el ancho queda fijado y el texto envuelve; el 14%
+       restante deja asomar la tarjeta siguiente, que es la señal visual de que
+       la lista se desliza. `min-width:0` evita que el mínimo automático de
+       contenido vuelva a estirarla. */
+    .option-list>li{display:flex;flex:0 0 86%;min-width:0;scroll-snap-align:start}
+
+    .option{width:100%;white-space:normal;border-radius:9px;border:1px solid var(--line);padding:12px;background:var(--surface)}
 
     .option:focus-visible{box-shadow:0 0 0 3px rgba(0,132,61,.14);border-color:var(--brand)}
 
-    .options--stack{display:block;padding:0}
-    .options--stack .option{min-width:auto;width:100%;margin-bottom:10px;scroll-snap-align:none}
+    .options--stack{display:block;overflow:visible;padding:0}
+    .options--stack>li{display:block;flex:0 0 auto;min-width:0;width:100%;margin-bottom:10px;scroll-snap-align:none}
 
-    @media (min-width:560px) and (max-width:767px){.option-list{gap:14px}.option{min-width:75%}}
-    @media (min-width:768px){.option-list{display:flex;flex-direction:column;gap:10px;overflow:visible}.option{min-width:auto;width:100%;scroll-snap-align:none}}
+    /* A partir de 768px hay ancho suficiente para apilar las opciones en
+       vertical; el carrusel solo aporta en móvil, así que allí se fuerza la
+       lista y se retira el conmutador (un carrusel dentro del panel lateral de
+       380px sería peor que la lista). */
+    @media (min-width:768px){
+      .option-list{display:flex;flex-direction:column;gap:10px;overflow:visible;padding:0}
+      .option-list>li{display:block;flex:0 0 auto;min-width:0;width:100%;scroll-snap-align:none}
+      #optionsViewToggle{display:none}
+    }
 
 
     .zone-banner {
@@ -888,11 +906,17 @@
       min-height: var(--console-height);
     }
 
+    /* El ancho se autoajusta al contenido: `auto-fit` + `max-content` reparte
+       tantas columnas como celdas haya y cada una toma solo lo que su valor
+       necesita, con un mínimo legible. Así el bloque no depende del número de
+       métricas — añadir o quitar celdas no requiere tocar el CSS. */
     .telemetry {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(112px, max-content));
       gap: 1px;
-      flex: 1 1 auto;
+      flex: 0 1 auto;
+      width: fit-content;
+      max-width: 100%;
       min-width: 0;
       background: var(--line);
       border: 1px solid var(--line);
@@ -1018,7 +1042,27 @@
       height: 14px;
     }
 
-    @media (max-width: 1180px) {
+    /* ==========================================================================
+       RESPONSIVE — dos modelos de layout distintos, no uno estirado
+
+       ≥981px  ·  APP-SHELL: body en grid de 3 filas a 100dvh, sin scroll de
+                  documento. El mapa y la ficha comparten la fila central y la
+                  ficha scrollea por dentro.
+
+       ≤980px  ·  DOCUMENTO: se abandona el app-shell. El documento scrollea de
+                  forma natural, el mapa toma una altura acotada y la ficha
+                  fluye completa (sin scroll interno ni max-height), de modo que
+                  ningún módulo pueda quedar recortado. La consola se queda
+                  pegada abajo como barra de acción persistente.
+
+                  Motivo del cambio: con el app-shell en 375×812 la ficha
+                  disponía de ~43px útiles para 2438px de contenido, así que las
+                  opciones de ruta, los reglamentos y las recomendaciones eran
+                  inalcanzables.
+       ========================================================================== */
+
+    /* ---------- Escritorio ---------- */
+    @media (min-width: 981px) and (max-width: 1199px) {
       .workspace {
         grid-template-columns: minmax(0, 1fr) 330px;
       }
@@ -1028,232 +1072,238 @@
       }
     }
 
-    /* Large and extra-large desktops */
-    @media (min-width: 1400px) {
-      .workspace {
-        grid-template-columns: minmax(0, 1fr) 420px;
-      }
-
-      .briefing {
-        overflow: visible;
-        max-height: none;
-      }
-
-      .option-list {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        overflow: visible;
-      }
-
-      .option {
-        min-width: auto;
-        width: 100%;
-      }
-    }
-
     @media (min-width: 1200px) and (max-width: 1399px) {
       .workspace {
         grid-template-columns: minmax(0, 1fr) 380px;
       }
-
-      .briefing {
-        overflow: visible;
-        max-height: none;
-      }
-
-      .option-list {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        overflow: visible;
-      }
-
-      .option {
-        min-width: auto;
-        width: 100%;
-      }
     }
 
-    /* Tablet */
-    @media (min-width: 768px) and (max-width: 979px) {
+    @media (min-width: 1400px) {
       .workspace {
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: minmax(50vh, 1fr) auto;
-      }
-
-      .map-stage {
-        min-height: 50vh;
-      }
-
-      .briefing {
-        max-height: max(200px, calc(100dvh - var(--appbar-height) - var(--console-height) - env(safe-area-inset-bottom)));
-        overflow-y: auto;
-        padding-bottom: calc(env(safe-area-inset-bottom) + 12px);
-        min-height: 180px;
-      }
-
-      .option-list {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        overflow: visible;
-      }
-
-      .option {
-        min-width: auto;
-        width: 100%;
+        grid-template-columns: minmax(0, 1fr) 420px;
       }
     }
 
-    /* Mobile landscape (between mobile portrait and tablet) */
-    @media (min-width: 560px) and (max-width: 767px) {
-      .map-stage {
-        min-height: 50vh;
-      }
-
-      .briefing {
-        max-height: max(200px, calc(100dvh - var(--appbar-height) - var(--console-height) - env(safe-area-inset-bottom)));
-        overflow-y: auto;
-        padding-bottom: calc(env(safe-area-inset-bottom) + 12px);
-        min-height: 160px;
-      }
-
-      .option-list {
-        display: flex;
-        gap: 12px;
-        overflow-x: auto;
-        scroll-snap-type: x mandatory;
-        padding: 8px 6px 14px;
-      }
-
-      .option {
-        min-width: 75%;
-        flex: 0 0 auto;
-        scroll-snap-align: start;
-      }
-    }
-
+    /* ---------- ≤980px · el documento manda ---------- */
     @media (max-width: 980px) {
-      .workspace {
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: minmax(46vh, 1fr) auto;
-        overflow-y: auto;
+
+      html {
+        /* Al saltar a un anclaje, deja hueco para la cabecera fija. */
+        scroll-padding-top: 104px;
       }
 
-      .map-stage {
-        min-height: 46vh;
+      body {
+        height: auto;
+        min-height: 100dvh;
+        grid-template-rows: auto auto auto;
+        overflow: visible;
       }
 
-      .briefing {
-        border-left: none;
-        border-top: 1px solid var(--line);
-        /* Permitimos scroll interno en móvil para que las secciones no se pierdan */
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-        max-height: max(200px, calc(100dvh - var(--appbar-height) - var(--console-height) - env(safe-area-inset-bottom)));
-        /* Añadimos padding-bottom seguro para no ocultar el último elemento */
-        padding-bottom: calc(env(safe-area-inset-bottom) + 12px);
-        min-height: 160px;
-      }
-
-      /* Mantener los títulos de sección visibles al desplazarse dentro de la ficha */
-      .section-heading {
+      /* 1 · Cabecera fija — identidad y estado de seguimiento siempre visibles.
+         El orden del DOM (marca · ruta · idioma · estado) se recoloca con
+         grid-areas: fila 1 marca + idioma, fila 2 ruta + estado. */
+      .app-bar {
         position: sticky;
         top: 0;
-        background: var(--surface);
-        z-index: 3;
-        padding-top: 8px;
-        padding-bottom: 6px;
-      }
-
-      .app-bar {
-        flex-wrap: wrap;
-        padding-top: 10px;
-        padding-bottom: 10px;
-        row-gap: 10px;
+        z-index: 1200;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+          "brand  lang"
+          "route  status";
+        align-items: center;
+        column-gap: 12px;
+        row-gap: 9px;
+        min-height: 0;
+        padding: 9px var(--gutter);
+        padding-top: max(9px, env(safe-area-inset-top));
+        box-shadow: 0 2px 10px rgba(22, 32, 42, .07);
       }
 
       .brand-lockup {
+        grid-area: brand;
         border-right: none;
+        padding-right: 0;
       }
 
-      .brand-lockup__unit {
-        display: block;
+      .language-switcher {
+        grid-area: lang;
+      }
+
+      .route-identity {
+        grid-area: route;
       }
 
       .status-pill {
-        max-width: none;
-        order: 3;
-        width: 100%;
+        grid-area: status;
+        justify-self: end;
+        max-width: 58%;
       }
 
+      /* 2 · Mapa con altura propia acotada: deja de competir por el espacio
+         con la ficha. Doble declaración: svh solo si el navegador lo soporta. */
+      .workspace {
+        display: block;
+        min-height: 0;
+        overflow: visible;
+      }
+
+      .map-stage {
+        height: 44vh;
+        height: 44svh;
+        min-height: 240px;
+        max-height: 440px;
+      }
+
+      /* Avisos anclados abajo (patrón snackbar): así no chocan con el control
+         de zoom de Leaflet, que vive arriba a la izquierda. */
+      .notice-stack {
+        top: auto;
+        bottom: 12px;
+        left: 12px;
+        right: 12px;
+        width: auto;
+        transform: none;
+      }
+
+      /* 3 · Ficha completa dentro del flujo: sin recortes ni scroll anidado. */
+      .briefing {
+        max-height: none;
+        min-height: 0;
+        overflow: visible;
+        border-left: none;
+        border-top: 1px solid var(--line);
+        padding: 14px var(--gutter) 18px;
+        gap: 18px;
+      }
+
+      /* Con scroll de documento un heading pegajoso dentro de la ficha solo
+         produciría solapes contra la cabecera fija. */
+      .section-heading {
+        position: static;
+      }
+
+      /* 4 · Consola pegada abajo. Es sticky, no fixed: conserva su hueco en el
+         flujo, así el último módulo de la ficha nunca queda tapado. Dentro se
+         invierte el orden — primero las acciones, luego la telemetría. */
       .console {
+        position: sticky;
+        bottom: 0;
+        z-index: 1100;
+        display: flex;
         flex-direction: column;
         align-items: stretch;
+        gap: 9px;
+        min-height: 0;
+        padding: 10px var(--gutter) calc(10px + env(safe-area-inset-bottom));
+        box-shadow: 0 -2px 14px rgba(22, 32, 42, .1);
       }
 
+      .controls {
+        order: 1;
+        gap: 8px;
+      }
+
+      /* Hereda el mismo auto-ajuste al contenido que en escritorio (`auto-fit` +
+         `max-content` + `width: fit-content`): no se estira al ancho disponible,
+         así dos métricas no se convierten en dos bloques enormes. El
+         `max-width: 100%` de la regla base hace que, si algún día no cupieran,
+         las columnas bajen al mínimo de 112px y envuelvan solas. */
       .telemetry {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        order: 2;
+        border-radius: 8px;
       }
 
-      .telemetry__cell:last-child {
-        grid-column: span 2;
+      .telemetry__cell {
+        gap: 3px;
+        padding: 7px 11px;
+      }
+
+      .telemetry__value {
+        font-size: 13.5px;
+      }
+
+      .route-source {
+        flex: 0 1 auto;
+        min-width: 0;
+        margin-right: 0;
+        font-size: 9px;
+      }
+
+      .route-source>span {
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+
+      .button {
+        flex: 1 1 0;
+        justify-content: center;
+        /* Objetivo táctil mínimo recomendado (WCAG 2.5.5). */
+        min-height: 44px;
+        padding: 10px 12px;
+      }
+    }
+
+    /* ---------- Tablet vertical: la ficha aprovecha el ancho en 2 columnas ---------- */
+    @media (min-width: 768px) and (max-width: 980px) {
+      .briefing {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: start;
+        gap: 16px;
+      }
+
+      .briefing>.booking {
+        grid-column: 1 / -1;
+      }
+    }
+
+    /* ---------- Móvil ---------- */
+    @media (max-width: 767px) {
+      .option__metrics {
+        flex-wrap: wrap;
+        gap: 8px;
       }
     }
 
     @media (max-width: 560px) {
-      .telemetry {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+      .map-stage {
+        height: 40vh;
+        height: 40svh;
       }
 
       .booking__grid {
         grid-template-columns: minmax(0, 1fr);
       }
 
-      .route-identity {
-        order: 2;
-      }
-
-      .language-switcher {
-        order: 1;
+      .brand-lockup__unit {
+        display: none;
       }
 
       .route-identity__name {
         font-size: 14px;
       }
 
-      .button {
-        flex: 1;
-        justify-content: center;
-      }
-
-      /* En pantallas pequeñas convertimos la lista de opciones en carrusel
-       horizontal para que las tarjetas no queden recortadas y sean fáciles
-       de deslizar con el pulgar. */
-      .option-list {
-        display: flex;
-        gap: 12px;
-        overflow-x: auto;
-        padding: 8px 6px 14px;
-        -webkit-overflow-scrolling: touch;
-        scroll-snap-type: x mandatory;
-      }
-
-      .option {
-        min-width: 82%;
-        flex: 0 0 auto;
-        white-space: normal;
-        scroll-snap-align: start;
-      }
-
-      .option__metrics {
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-
       .section-heading__title {
-        font-size: 13px;
+        font-size: 12px;
+      }
+    }
+
+    /* Bajo ~400px la fuente de ruta no cabe junto a los dos botones; el estado
+       de seguimiento ya se comunica en la cabecera fija. */
+    @media (max-width: 400px) {
+      .route-source {
+        display: none;
+      }
+
+      .app-bar {
+        column-gap: 9px;
+      }
+
+      .status-pill {
+        max-width: 64%;
+        padding: 7px 11px 7px 9px;
       }
     }
 
@@ -1504,22 +1554,13 @@
   </main>
 
   <footer class="console">
+    <!-- Solo magnitudes operativas. Las coordenadas crudas (latitud/longitud) y
+         la precisión del GPS son datos de diagnóstico y se han retirado de la
+         interfaz; el estado de seguimiento se comunica en el pill de cabecera. -->
     <div class="telemetry">
-      <div class="telemetry__cell">
-        <span class="telemetry__label" data-i18n="ui.telemetry.latitude">&nbsp;</span>
-        <span class="telemetry__value" id="telemetryLatitude">—</span>
-      </div>
-      <div class="telemetry__cell">
-        <span class="telemetry__label" data-i18n="ui.telemetry.longitude">&nbsp;</span>
-        <span class="telemetry__value" id="telemetryLongitude">—</span>
-      </div>
       <div class="telemetry__cell">
         <span class="telemetry__label" data-i18n="ui.telemetry.speed">&nbsp;</span>
         <span class="telemetry__value" id="telemetrySpeed">—</span>
-      </div>
-      <div class="telemetry__cell">
-        <span class="telemetry__label" data-i18n="ui.telemetry.accuracy">&nbsp;</span>
-        <span class="telemetry__value" id="telemetryAccuracy">—</span>
       </div>
       <div class="telemetry__cell" id="telemetryDistanceCell">
         <span class="telemetry__label" data-i18n="ui.telemetry.distance">&nbsp;</span>
@@ -1690,10 +1731,7 @@
             enforcement: { prohibited: "Prohibida", regulated: "Regulada", route: "Toda la ruta" },
             regulation: { count: "{count} vigentes" },
             telemetry: {
-              latitude: "Latitud",
-              longitude: "Longitud",
               speed: "Velocidad",
-              accuracy: "Precisión",
               distance: "Dist. a ruta"
             },
             controls: { follow: "Seguir", simulationStart: "Iniciar simulación", simulationStop: "Detener simulación" },
@@ -1835,10 +1873,7 @@
             enforcement: { prohibited: "Prohibited", regulated: "Regulated", route: "Whole route" },
             regulation: { count: "{count} in force" },
             telemetry: {
-              latitude: "Latitude",
-              longitude: "Longitude",
               speed: "Speed",
-              accuracy: "Accuracy",
               distance: "Dist. to route"
             },
             controls: { follow: "Follow", simulationStart: "Start simulation", simulationStop: "Stop simulation" },
@@ -1980,10 +2015,7 @@
             enforcement: { prohibited: "Verboten", regulated: "Reguliert", route: "Gesamte Strecke" },
             regulation: { count: "{count} gültig" },
             telemetry: {
-              latitude: "Breite",
-              longitude: "Länge",
               speed: "Geschwindigkeit",
-              accuracy: "Genauigkeit",
               distance: "Abst. zur Route"
             },
             controls: { follow: "Folgen", simulationStart: "Simulation starten", simulationStop: "Simulation stoppen" },
@@ -2125,10 +2157,7 @@
             enforcement: { prohibited: "Interdite", regulated: "Réglementée", route: "Tout l'itinéraire" },
             regulation: { count: "{count} en vigueur" },
             telemetry: {
-              latitude: "Latitude",
-              longitude: "Longitude",
               speed: "Vitesse",
-              accuracy: "Précision",
               distance: "Dist. à l'itin."
             },
             controls: { follow: "Suivre", simulationStart: "Lancer la simulation", simulationStop: "Arrêter la simulation" },
@@ -3568,10 +3597,7 @@
         this.routeSourceElement = document.getElementById("routeSource");
         this.statusPillElement = document.getElementById("statusPill");
         this.statusLabelElement = document.getElementById("statusLabel");
-        this.latitudeElement = document.getElementById("telemetryLatitude");
-        this.longitudeElement = document.getElementById("telemetryLongitude");
         this.speedElement = document.getElementById("telemetrySpeed");
-        this.accuracyElement = document.getElementById("telemetryAccuracy");
         this.distanceElement = document.getElementById("telemetryDistance");
         this.distanceCellElement = document.getElementById("telemetryDistanceCell");
         this.lastEvaluation = null;
@@ -3590,12 +3616,7 @@
       }
 
       renderFix(fix) {
-        this.latitudeElement.textContent = fix.latitude.toFixed(5);
-        this.longitudeElement.textContent = fix.longitude.toFixed(5);
         this.speedElement.textContent = `${fix.speedKmh.toFixed(1)} km/h`;
-        this.accuracyElement.textContent = Number.isFinite(fix.accuracyMeters)
-          ? `± ${Math.round(fix.accuracyMeters)} m`
-          : "± — m";
       }
 
       renderEvaluation(evaluation) {
