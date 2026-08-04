@@ -486,6 +486,8 @@
       overflow-y: auto;
       background: var(--surface);
       border-left: 1px solid var(--line);
+      position: relative;
+      z-index: 2;
     }
 
     .briefing>* {
@@ -1085,8 +1087,10 @@
       }
 
       .briefing {
-        max-height: calc(100dvh - var(--appbar-height) - var(--console-height) - env(safe-area-inset-bottom));
+        max-height: max(200px, calc(100dvh - var(--appbar-height) - var(--console-height) - env(safe-area-inset-bottom)));
         overflow-y: auto;
+        padding-bottom: calc(env(safe-area-inset-bottom) + 12px);
+        min-height: 180px;
       }
 
       .option-list {
@@ -1109,8 +1113,10 @@
       }
 
       .briefing {
-        max-height: calc(100dvh - var(--appbar-height) - var(--console-height) - env(safe-area-inset-bottom));
+        max-height: max(200px, calc(100dvh - var(--appbar-height) - var(--console-height) - env(safe-area-inset-bottom)));
         overflow-y: auto;
+        padding-bottom: calc(env(safe-area-inset-bottom) + 12px);
+        min-height: 160px;
       }
 
       .option-list {
@@ -1145,10 +1151,10 @@
         /* Permitimos scroll interno en móvil para que las secciones no se pierdan */
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
-        max-height: calc(100dvh - var(--appbar-height) - var(--console-height) - env(safe-area-inset-bottom));
-        /* Añadimos padding-bottom para que el último elemento no quede oculto
-           por la consola/barra inferior del navegador. */
-        padding-bottom: calc(var(--console-height) + env(safe-area-inset-bottom) + 12px);
+        max-height: max(200px, calc(100dvh - var(--appbar-height) - var(--console-height) - env(safe-area-inset-bottom)));
+        /* Añadimos padding-bottom seguro para no ocultar el último elemento */
+        padding-bottom: calc(env(safe-area-inset-bottom) + 12px);
+        min-height: 160px;
       }
 
       /* Mantener los títulos de sección visibles al desplazarse dentro de la ficha */
