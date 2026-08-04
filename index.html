@@ -38,6 +38,8 @@
   <style>
     :root {
       --brand: #00843D;
+      --appbar-height: 62px;
+      --console-height: 84px;
       --brand-dark: #00602C;
       --brand-soft: #E8F3EC;
       --bg: #F1F4F6;
@@ -105,7 +107,7 @@
       align-items: center;
       gap: var(--gutter);
       padding: 0 var(--gutter);
-      min-height: 62px;
+      min-height: var(--appbar-height);
       background: var(--surface);
       border-bottom: 3px solid var(--brand);
     }
@@ -230,16 +232,23 @@
       gap: 8px;
       flex: 0 1 auto;
       min-width: 0;
-      max-width: 34%;
-      padding: 8px 14px 8px 11px;
-      border: 1px solid var(--line-strong);
-      border-radius: 999px;
-      background: var(--surface-alt);
-      font-family: var(--font-data);
-      font-size: 11px;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-      color: var(--ink-dim);
+    }
+
+    .option {
+      min-width: 90%;
+      flex: 0 0 auto;
+      white-space: normal;
+    }
+
+    padding: 8px 14px 8px 11px;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: var(--surface-alt);
+    font-family: var(--font-data);
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
     }
 
     .status-pill__dot {
@@ -857,6 +866,8 @@
       padding: 13px var(--gutter) calc(13px + env(safe-area-inset-bottom));
       background: var(--surface);
       border-top: 1px solid var(--line);
+      /* Reserve a minimum visible footprint so content above can account for it */
+      min-height: var(--console-height);
     }
 
     .telemetry {
@@ -999,6 +1010,108 @@
       }
     }
 
+    /* Large and extra-large desktops */
+    @media (min-width: 1400px) {
+      .workspace {
+        grid-template-columns: minmax(0, 1fr) 420px;
+      }
+
+      .briefing {
+        overflow: visible;
+        max-height: none;
+      }
+
+      .option-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        overflow: visible;
+      }
+
+      .option {
+        min-width: auto;
+        width: 100%;
+      }
+    }
+
+    @media (min-width: 1200px) and (max-width: 1399px) {
+      .workspace {
+        grid-template-columns: minmax(0, 1fr) 380px;
+      }
+
+      .briefing {
+        overflow: visible;
+        max-height: none;
+      }
+
+      .option-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        overflow: visible;
+      }
+
+      .option {
+        min-width: auto;
+        width: 100%;
+      }
+    }
+
+    /* Tablet */
+    @media (min-width: 768px) and (max-width: 979px) {
+      .workspace {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(50vh, 1fr) auto;
+      }
+
+      .map-stage {
+        min-height: 50vh;
+      }
+
+      .briefing {
+        max-height: calc(100dvh - var(--appbar-height) - var(--console-height) - env(safe-area-inset-bottom));
+        overflow-y: auto;
+      }
+
+      .option-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        overflow: visible;
+      }
+
+      .option {
+        min-width: auto;
+        width: 100%;
+      }
+    }
+
+    /* Mobile landscape (between mobile portrait and tablet) */
+    @media (min-width: 560px) and (max-width: 767px) {
+      .map-stage {
+        min-height: 50vh;
+      }
+
+      .briefing {
+        max-height: calc(100dvh - var(--appbar-height) - var(--console-height) - env(safe-area-inset-bottom));
+        overflow-y: auto;
+      }
+
+      .option-list {
+        display: flex;
+        gap: 12px;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        padding: 8px 6px 14px;
+      }
+
+      .option {
+        min-width: 75%;
+        flex: 0 0 auto;
+        scroll-snap-align: start;
+      }
+    }
+
     @media (max-width: 980px) {
       .workspace {
         grid-template-columns: minmax(0, 1fr);
@@ -1013,13 +1126,13 @@
       .briefing {
         border-left: none;
         border-top: 1px solid var(--line);
-        /* Permitimos scroll interno en móvil para que las secciones no se pierdan
-         al bajar la pantalla. Calculamos una altura máxima aproximada restando
-         la altura de cabecera y pie de página. */
+        /* Permitimos scroll interno en móvil para que las secciones no se pierdan */
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
-        max-height: calc(100dvh - 62px - 72px);
-        padding-bottom: 8px;
+        max-height: calc(100dvh - var(--appbar-height) - var(--console-height) - env(safe-area-inset-bottom));
+        /* Añadimos padding-bottom para que el último elemento no quede oculto
+           por la consola/barra inferior del navegador. */
+        padding-bottom: calc(var(--console-height) + env(safe-area-inset-bottom) + 12px);
       }
 
       /* Mantener los títulos de sección visibles al desplazarse dentro de la ficha */
@@ -1102,12 +1215,14 @@
         overflow-x: auto;
         padding: 8px 6px 14px;
         -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x mandatory;
       }
 
       .option {
         min-width: 82%;
         flex: 0 0 auto;
         white-space: normal;
+        scroll-snap-align: start;
       }
 
       .option__metrics {
@@ -1408,7 +1523,7 @@
   <script>
     const routeConfiguration = {
       operator: {
-        name: "Enterprise Rent-A-Car",
+        name: "Enterprise",
         unitLabel: "Airport Shuttle Operations · PMI",
         logoImageDataUri: null
       },
